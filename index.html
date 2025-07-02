@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CUSTOMS Clicker Game</title>
 
-  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
-  <!-- Styles -->
   <style>
     :root {
       --main-color: #00ff88;
@@ -66,7 +65,7 @@
       border: 2px solid var(--main-color);
       border-radius: 15px;
       padding: 1rem;
-      width: 180px;
+      width: 200px;
       cursor: pointer;
       color: var(--main-color);
       transition: 0.3s;
@@ -113,7 +112,6 @@
   </style>
 </head>
 <body>
-
   <h1>CUSTOMS Clicker</h1>
   <div class="stats">
     Orders: <span id="orders">0</span><br/>
@@ -124,7 +122,9 @@
 
   <div class="upgrades">
     <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
-      Double Click<br/>Cost: <span id="doubleClickCost">20</span>
+      Double Click<br/>
+      Level: <span id="doubleClickLevel">0</span><br/>
+      Cost: <span id="doubleClickCost">20</span>
     </div>
     <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
       Auto Clicker<br/>Cost: <span id="autoClickerCost">50</span>
@@ -132,23 +132,20 @@
   </div>
 
   <div class="terminal">
-    <label>Terminal (e.g. <code>theme red</code>):</label>
+    <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
     <input type="text" id="terminalInput" placeholder="Enter command...">
   </div>
 
   <footer>Made for CUSTOMS 🚀</footer>
 
-  <!-- CryptoJS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
-  <!-- Game Script -->
   <script>
     const secret = "CUSTOMS_SECRET";
+
     let gameData = {
       orders: 0,
       perClick: 1,
       upgrades: {
-        doubleClick: { cost: 20, owned: false },
+        doubleClick: { cost: 20, level: 0 },
         autoClicker: { cost: 50, owned: false }
       }
     };
@@ -161,18 +158,22 @@
       try {
         const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
         return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      } catch (e) {
-        console.warn("Decryption failed. Resetting data.");
+      } catch {
         return null;
       }
     }
 
     function saveGame() {
-      const encrypted = encryptData(gameData);
-      localStorage.setItem("customsSave", encrypted);
+      localStorage.setItem("customsSave", encryptData(gameData));
     }
 
     function loadGame() {
+      const banUntil = localStorage.getItem("bannedUntil");
+      if (banUntil && Date.now() < parseInt(banUntil)) {
+        showBannedScreen();
+        return;
+      }
+
       const data = localStorage.getItem("customsSave");
       if (data) {
         const decrypted = decryptData(data);
@@ -185,6 +186,7 @@
       document.getElementById("orders").innerText = gameData.orders;
       document.getElementById("perClick").innerText = gameData.perClick;
       document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
+      document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
       document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
     }
 
@@ -196,28 +198,28 @@
 
     function buyUpgrade(type) {
       const upgrade = gameData.upgrades[type];
-      if (gameData.orders >= upgrade.cost && !upgrade.owned) {
+
+      if (type === "doubleClick" && gameData.orders >= upgrade.cost) {
+        gameData.orders -= upgrade.cost;
+        gameData.perClick *= 2;
+        upgrade.level += 1;
+        upgrade.cost += 30;
+      }
+
+      if (type === "autoClicker" && !upgrade.owned && gameData.orders >= upgrade.cost) {
         gameData.orders -= upgrade.cost;
         upgrade.owned = true;
-
-        if (type === "doubleClick") {
-          gameData.perClick *= 2;
-        }
-
-        if (type === "autoClicker") {
-          setInterval(() => {
-            gameData.orders += gameData.perClick;
-            updateUI();
-            saveGame();
-          }, 1000);
-        }
-
-        updateUI();
-        saveGame();
+        setInterval(() => {
+          gameData.orders += gameData.perClick;
+          updateUI();
+          saveGame();
+        }, 1000);
       }
+
+      updateUI();
+      saveGame();
     }
 
-    // Theme terminal command
     document.getElementById("terminalInput").addEventListener("keypress", function (e) {
       if (e.key === "Enter") {
         const input = this.value.trim().toLowerCase();
@@ -226,31 +228,74 @@
         if (input.startsWith("theme ")) {
           const color = input.split(" ")[1];
           switch (color) {
-            case "red":
-              root.style.setProperty('--main-color', '#ff4444');
-              break;
-            case "green":
-              root.style.setProperty('--main-color', '#44ff44');
-              break;
-            case "blue":
-              root.style.setProperty('--main-color', '#44bbff');
-              break;
-            case "neon":
-              root.style.setProperty('--main-color', '#39ff14');
-              break;
-            case "default":
-              root.style.setProperty('--main-color', '#00ff88');
-              break;
-            default:
-              alert("Unknown theme. Try: red, green, blue, neon, default");
+            case "red": root.style.setProperty('--main-color', '#ff4444'); break;
+            case "green": root.style.setProperty('--main-color', '#44ff44'); break;
+            case "blue": root.style.setProperty('--main-color', '#44bbff'); break;
+            case "neon": root.style.setProperty('--main-color', '#39ff14'); break;
+            case "default": root.style.setProperty('--main-color', '#00ff88'); break;
+            default: alert("Unknown theme. Try: red, green, blue, neon, default");
           }
           updateUI();
         }
+
+        if (input === "disintegrate") {
+          triggerDisintegrate();
+        }
+
         this.value = "";
       }
     });
 
-    // Init
+    function triggerDisintegrate() {
+      document.body.innerHTML = `
+        <style>
+          body {
+            background: black;
+            color: lime;
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            animation: glitch 0.5s infinite;
+          }
+          @keyframes glitch {
+            0% { transform: translate(0, 0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-1px, 1px); }
+            80% { transform: translate(1px, -1px); }
+            100% { transform: translate(0, 0); }
+          }
+        </style>
+        <h1>💥 SYSTEM DISINTEGRATION INITIATED 💥<br>Resetting...</h1>
+      `;
+
+      setTimeout(() => {
+        localStorage.removeItem("customsSave");
+        localStorage.setItem("bannedUntil", (Date.now() + 3 * 60 * 1000).toString());
+        location.reload();
+      }, 3000);
+    }
+
+    function showBannedScreen() {
+      document.body.innerHTML = `
+        <style>
+          body {
+            background: #111;
+            color: red;
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+          }
+        </style>
+        <h1>⛔ You have been disintegrated.<br>Please return in 3 minutes.</h1>
+      `;
+    }
+
     loadGame();
     setInterval(saveGame, 10000);
   </script>
