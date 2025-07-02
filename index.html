@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CUSTOMS Clicker Game</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f0f0f, #1f1f1f);
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+      margin: 0;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #00ff88;
+    }
+    .click-btn {
+      background-color: #00ff88;
+      color: #000;
+      border: none;
+      border-radius: 20px;
+      font-size: 2rem;
+      padding: 1rem 3rem;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .click-btn:active {
+      transform: scale(0.95);
+    }
+    .stats {
+      margin: 1.5rem 0;
+      font-size: 1.5rem;
+    }
+    .upgrades {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .upgrade-btn {
+      background: #222;
+      border: 2px solid #00ff88;
+      border-radius: 15px;
+      padding: 1rem;
+      width: 180px;
+      cursor: pointer;
+      color: #00ff88;
+      transition: 0.3s;
+    }
+    .upgrade-btn:hover {
+      background: #00ff88;
+      color: #000;
+    }
+    footer {
+      margin-top: 3rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <h1>CUSTOMS Clicker</h1>
+  <div class="stats">
+    Orders: <span id="orders">0</span><br/>
+    Per Click: <span id="perClick">1</span>
+  </div>
+  <button class="click-btn" onclick="handleClick()">📦 Click Me!</button>
+
+  <div class="upgrades">
+    <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
+      Double Click<br/>Cost: <span id="doubleClickCost">20</span>
+    </div>
+    <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
+      Auto Clicker<br/>Cost: <span id="autoClickerCost">50</span>
+    </div>
+  </div>
+
+  <footer>Made for CUSTOMS 🚀</footer>
+
+  <!-- CryptoJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script>
+    const secret = "CUSTOMS_SECRET";
+    let gameData = {
+      orders: 0,
+      perClick: 1,
+      upgrades: {
+        doubleClick: { cost: 20, owned: false },
+        autoClicker: { cost: 50, owned: false }
+      }
+    };
+
+    function encryptData(data) {
+      return CryptoJS.AES.encrypt(JSON.stringify(data), secret).toString();
+    }
+
+    function decryptData(ciphertext) {
+      try {
+        const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
+        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+      } catch (e) {
+        console.warn("Decryption failed. Resetting data.");
+        return null;
+      }
+    }
+
+    function saveGame() {
+      const encrypted = encryptData(gameData);
+      localStorage.setItem("customsSave", encrypted);
+    }
+
+    function loadGame() {
+      const data = localStorage.getItem("customsSave");
+      if (data) {
+        const decrypted = decryptData(data);
+        if (decrypted) gameData = decrypted;
+      }
+      updateUI();
+    }
+
+    function updateUI() {
+      document.getElementById("orders").innerText = gameData.orders;
+      document.getElementById("perClick").innerText = gameData.perClick;
+      document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
+      document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
+    }
+
+    function handleClick() {
+      gameData.orders += gameData.perClick;
+      updateUI();
+      saveGame();
+    }
+
+    function buyUpgrade(type) {
+      const upgrade = gameData.upgrades[type];
+      if (gameData.orders >= upgrade.cost && !upgrade.owned) {
+        gameData.orders -= upgrade.cost;
+        upgrade.owned = true;
+        if (type === "doubleClick") {
+          gameData.perClick *= 2;
+        } else if (type === "autoClicker") {
+          setInterval(() => {
+            gameData.orders += gameData.perClick;
+            updateUI();
+            saveGame();
+          }, 1000);
+        }
+        updateUI();
+        saveGame();
+      }
+    }
+
+    // Load on start
+    loadGame();
+
+    // Optional: auto-save every 10s
+    setInterval(saveGame, 10000);
+  </script>
+</body>
+</html>
