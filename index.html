@@ -3,55 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CUSTOMS Clicker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <title>CUSTOMS Clicker Game</title>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
   <style>
     :root {
       --main-color: #00ff88;
-      --bg-color: #111;
-      --text-color: #f1f1f1;
+      --bg-color: #0f0f0f;
+      --text-color: #ffffff;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
-      margin: 0;
-      padding: 2rem;
-      font-family: 'Poppins', sans-serif;
-      background-color: var(--bg-color);
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, var(--bg-color), #1f1f1f);
       color: var(--text-color);
       text-align: center;
+      padding: 2rem;
+      margin: 0;
     }
 
     h1 {
-      color: var(--main-color);
       font-size: 2.5rem;
-    }
-
-    .subtitle {
-      font-size: 0.9rem;
-      color: #888;
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
+      color: var(--main-color);
     }
 
     .stats {
-      font-size: 1.4rem;
-      margin-bottom: 2rem;
+      margin: 1.5rem 0;
+      font-size: 1.5rem;
     }
 
     .click-btn {
-      background: var(--main-color);
-      border: none;
-      border-radius: 50%;
-      width: 120px;
-      height: 120px;
-      font-size: 2rem;
+      background-color: var(--main-color);
       color: #000;
+      border: none;
+      border-radius: 20px;
+      font-size: 2rem;
+      padding: 1rem 3rem;
       cursor: pointer;
-      transition: transform 0.1s ease-in-out;
-      margin-bottom: 2rem;
+      transition: transform 0.2s;
     }
 
     .click-btn:active {
@@ -59,23 +54,22 @@
     }
 
     .upgrades {
+      margin-top: 2rem;
       display: flex;
       justify-content: center;
       flex-wrap: wrap;
       gap: 1rem;
-      margin-top: 1rem;
     }
 
     .upgrade-btn {
-      background: transparent;
+      background: #222;
       border: 2px solid var(--main-color);
-      color: var(--main-color);
-      padding: 0.75rem;
-      font-weight: bold;
-      border-radius: 10px;
+      border-radius: 15px;
+      padding: 1rem;
       width: 180px;
       cursor: pointer;
-      transition: 0.2s;
+      color: var(--main-color);
+      transition: 0.3s;
     }
 
     .upgrade-btn:hover {
@@ -85,8 +79,7 @@
 
     footer {
       margin-top: 3rem;
-      font-size: 0.85rem;
-      color: #888;
+      color: #777;
     }
 
     .terminal {
@@ -120,34 +113,35 @@
   </style>
 </head>
 <body>
-  <h1>CUSTOMS Clicker</h1>
-  <div class="subtitle">Developed by CUSTOMS</div>
 
+  <h1>CUSTOMS Clicker</h1>
   <div class="stats">
     Orders: <span id="orders">0</span><br/>
     Per Click: <span id="perClick">1</span>
   </div>
 
-  <button class="click-btn" onclick="handleClick()">📦</button>
+  <button class="click-btn" onclick="handleClick()">📦 Click Me!</button>
 
   <div class="upgrades">
-    <button class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
-      🌀 Double Click<br/>Cost: <span id="doubleClickCost">20</span>
-    </button>
-    <button class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
-      ⚙️ Auto Clicker<br/>Cost: <span id="autoClickerCost">50</span>
-    </button>
+    <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
+      Double Click<br/>Cost: <span id="doubleClickCost">20</span>
+    </div>
+    <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
+      Auto Clicker<br/>Cost: <span id="autoClickerCost">50</span>
+    </div>
   </div>
 
   <div class="terminal">
-    <label>Terminal (e.g., <code>theme blue</code>):</label>
-    <input type="text" id="terminalInput" placeholder="Type command here...">
+    <label>Terminal (e.g. <code>theme red</code>):</label>
+    <input type="text" id="terminalInput" placeholder="Enter command...">
   </div>
 
-  <footer>&copy; 2025 CUSTOMS. All rights reserved.</footer>
+  <footer>Made for CUSTOMS 🚀</footer>
 
-  <!-- CryptoJS for encryption -->
+  <!-- CryptoJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+  <!-- Game Script -->
   <script>
     const secret = "CUSTOMS_SECRET";
     let gameData = {
@@ -168,17 +162,18 @@
         const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
         return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
       } catch (e) {
-        console.warn("Save data could not be decrypted.");
+        console.warn("Decryption failed. Resetting data.");
         return null;
       }
     }
 
     function saveGame() {
-      localStorage.setItem("customsClickerSave", encryptData(gameData));
+      const encrypted = encryptData(gameData);
+      localStorage.setItem("customsSave", encrypted);
     }
 
     function loadGame() {
-      const data = localStorage.getItem("customsClickerSave");
+      const data = localStorage.getItem("customsSave");
       if (data) {
         const decrypted = decryptData(data);
         if (decrypted) gameData = decrypted;
@@ -201,59 +196,61 @@
 
     function buyUpgrade(type) {
       const upgrade = gameData.upgrades[type];
-      if (!upgrade.owned && gameData.orders >= upgrade.cost) {
+      if (gameData.orders >= upgrade.cost && !upgrade.owned) {
         gameData.orders -= upgrade.cost;
         upgrade.owned = true;
-        if (type === 'doubleClick') {
+
+        if (type === "doubleClick") {
           gameData.perClick *= 2;
-        } else if (type === 'autoClicker') {
+        }
+
+        if (type === "autoClicker") {
           setInterval(() => {
             gameData.orders += gameData.perClick;
             updateUI();
             saveGame();
           }, 1000);
         }
+
         updateUI();
         saveGame();
       }
     }
 
-    function handleTerminalCommand(input) {
-      const command = input.trim().toLowerCase();
-      if (command.startsWith("theme ")) {
-        const color = command.split(" ")[1];
-        const root = document.documentElement;
-        switch (color) {
-          case "blue":
-            root.style.setProperty('--main-color', '#00aaff');
-            break;
-          case "red":
-            root.style.setProperty('--main-color', '#ff4444');
-            break;
-          case "green":
-            root.style.setProperty('--main-color', '#44ff44');
-            break;
-          case "neon":
-            root.style.setProperty('--main-color', '#39ff14');
-            break;
-          case "default":
-            root.style.setProperty('--main-color', '#00ff88');
-            break;
-          default:
-            alert("Unknown theme. Try: blue, red, green, neon, default");
-        }
-      }
-    }
-
-    // Setup terminal input
+    // Theme terminal command
     document.getElementById("terminalInput").addEventListener("keypress", function (e) {
       if (e.key === "Enter") {
-        handleTerminalCommand(this.value);
+        const input = this.value.trim().toLowerCase();
+        const root = document.documentElement;
+
+        if (input.startsWith("theme ")) {
+          const color = input.split(" ")[1];
+          switch (color) {
+            case "red":
+              root.style.setProperty('--main-color', '#ff4444');
+              break;
+            case "green":
+              root.style.setProperty('--main-color', '#44ff44');
+              break;
+            case "blue":
+              root.style.setProperty('--main-color', '#44bbff');
+              break;
+            case "neon":
+              root.style.setProperty('--main-color', '#39ff14');
+              break;
+            case "default":
+              root.style.setProperty('--main-color', '#00ff88');
+              break;
+            default:
+              alert("Unknown theme. Try: red, green, blue, neon, default");
+          }
+          updateUI();
+        }
         this.value = "";
       }
     });
 
-    // Start game
+    // Init
     loadGame();
     setInterval(saveGame, 10000);
   </script>
