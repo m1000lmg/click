@@ -3,73 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CUSTOMS Clicker Game</title>
+  <title>CUSTOMS Clicker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #0f0f0f, #1f1f1f);
-      color: #fff;
-      text-align: center;
-      padding: 2rem;
       margin: 0;
+      padding: 2rem;
+      font-family: 'Orbitron', sans-serif;
+      background: #121212;
+      color: #f1f1f1;
+      text-align: center;
     }
+
     h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
       color: #00ff88;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
     }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    .stats {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+
     .click-btn {
-      background-color: #00ff88;
-      color: #000;
+      background: #00ff88;
       border: none;
-      border-radius: 20px;
-      font-size: 2rem;
-      padding: 1rem 3rem;
+      border-radius: 50%;
+      width: 120px;
+      height: 120px;
+      font-size: 1.8rem;
+      color: #000;
       cursor: pointer;
-      transition: transform 0.2s;
+      transition: transform 0.1s ease-in-out;
     }
+
     .click-btn:active {
       transform: scale(0.95);
     }
-    .stats {
-      margin: 1.5rem 0;
-      font-size: 1.5rem;
-    }
+
     .upgrades {
       margin-top: 2rem;
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
       gap: 1rem;
+      flex-wrap: wrap;
     }
+
     .upgrade-btn {
-      background: #222;
+      background: #1e1e1e;
       border: 2px solid #00ff88;
-      border-radius: 15px;
-      padding: 1rem;
-      width: 180px;
-      cursor: pointer;
       color: #00ff88;
-      transition: 0.3s;
+      padding: 0.8rem 1rem;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 160px;
+      transition: 0.2s;
     }
+
     .upgrade-btn:hover {
       background: #00ff88;
       color: #000;
     }
+
     footer {
       margin-top: 3rem;
-      color: #777;
+      color: #666;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
   <h1>CUSTOMS Clicker</h1>
+  <div class="subtitle">Developed by CUSTOMS</div>
+
   <div class="stats">
     Orders: <span id="orders">0</span><br/>
     Per Click: <span id="perClick">1</span>
   </div>
-  <button class="click-btn" onclick="handleClick()">📦 Click Me!</button>
+
+  <button class="click-btn" onclick="handleClick()">📦</button>
 
   <div class="upgrades">
     <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
@@ -80,7 +100,7 @@
     </div>
   </div>
 
-  <footer>Made for CUSTOMS 🚀</footer>
+  <footer>&copy; 2025 CUSTOMS. All rights reserved.</footer>
 
   <!-- CryptoJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -104,21 +124,21 @@
         const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
         return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
       } catch (e) {
-        console.warn("Decryption failed. Resetting data.");
+        console.warn("Decryption failed.");
         return null;
       }
     }
 
     function saveGame() {
       const encrypted = encryptData(gameData);
-      localStorage.setItem("customsSave", encrypted);
+      localStorage.setItem("customsClickerSave", encrypted);
     }
 
     function loadGame() {
-      const data = localStorage.getItem("customsSave");
-      if (data) {
-        const decrypted = decryptData(data);
-        if (decrypted) gameData = decrypted;
+      const saved = localStorage.getItem("customsClickerSave");
+      if (saved) {
+        const data = decryptData(saved);
+        if (data) gameData = data;
       }
       updateUI();
     }
@@ -141,24 +161,26 @@
       if (gameData.orders >= upgrade.cost && !upgrade.owned) {
         gameData.orders -= upgrade.cost;
         upgrade.owned = true;
-        if (type === "doubleClick") {
+
+        if (type === 'doubleClick') {
           gameData.perClick *= 2;
-        } else if (type === "autoClicker") {
+        }
+
+        if (type === 'autoClicker') {
           setInterval(() => {
             gameData.orders += gameData.perClick;
             updateUI();
             saveGame();
           }, 1000);
         }
+
         updateUI();
         saveGame();
       }
     }
 
-    // Load on start
+    // Initial load
     loadGame();
-
-    // Optional: auto-save every 10s
     setInterval(saveGame, 10000);
   </script>
 </body>
