@@ -1,16 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CUSTOMS Clicker Game</title>
+  <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
-    :root { --main-color: #00ff88; }
+    :root {
+      --main-color: #00ff88;
+    }
     body {
       background: #0d0d0d;
       color: var(--main-color);
@@ -18,17 +20,6 @@
       text-align: center;
       padding: 2rem;
     }
-    button {
-      font-size: 1.5rem;
-      padding: 1rem 2rem;
-      border: none;
-      border-radius: 15px;
-      background: var(--main-color);
-      color: #000;
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }
-    button:active { transform: scale(0.95); }
     .stats, .upgrades, .terminal { margin: 2rem 0; }
     .upgrade-btn {
       background: #111;
@@ -51,30 +42,11 @@
       padding: 6px;
       border-radius: 6px;
       width: 250px;
-      animation: fadeIn 0.5s ease;
-    }
-    .pop { animation: pop 0.2s ease; }
-    .glow {
-      box-shadow: 0 0 10px var(--main-color), 0 0 20px var(--main-color);
-    }
-    @keyframes pop {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-      100% { transform: scale(1); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6d27d6c70b.mp3" preload="auto"></audio>
-  <audio id="upgradeSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_cbe0a3b8ba.mp3" preload="auto"></audio>
-  <audio id="terminalSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_f8e0b7f3d4.mp3" preload="auto"></audio>
-
   <h1>CUSTOMS Clicker</h1>
-  <button onclick="clickOrder()">Click Order</button>
   <div class="stats">
     Orders: <span id="orders">0</span><br/>
     Per Click: <span id="perClick">1</span>
@@ -90,10 +62,12 @@
       Cost: <span id="autoClickerCost">50</span>
     </div>
   </div>
+
   <div id="leaderboard">
     <h2>🏆 Leaderboard</h2>
     <ol id="leaderboardList"></ol>
   </div>
+
   <div class="terminal">
     <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
     <input type="text" id="terminalInput" placeholder="Enter command...">
@@ -101,6 +75,7 @@
   <footer>Made for CUSTOMS 🚀</footer>
 
   <script>
+    // Firebase Setup
     const firebaseConfig = {
       apiKey: "AIzaSyA7IGIzhaH7F2-P-gZ3A7ARUfMFE7s4iBM",
       authDomain: "customs-market.firebaseapp.com",
@@ -114,6 +89,7 @@
     let currentUID = null;
     let playerName = null;
 
+    // Game Data
     const secret = "CUSTOMS_SECRET";
     let gameData = {
       orders: 0,
@@ -127,6 +103,7 @@
     function encryptData(data) {
       return CryptoJS.AES.encrypt(JSON.stringify(data), secret).toString();
     }
+
     function decryptData(ciphertext) {
       try {
         const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
@@ -134,29 +111,6 @@
       } catch {
         return null;
       }
-    }
-
-    function clickOrder() {
-      document.getElementById("clickSound").play();
-      gameData.orders += gameData.perClick;
-      updateUI();
-      saveGame();
-      const ordersEl = document.getElementById("orders");
-      ordersEl.classList.add("pop");
-      setTimeout(() => ordersEl.classList.remove("pop"), 200);
-    }
-
-    function updateUI() {
-      document.getElementById("orders").innerText = gameData.orders;
-      document.getElementById("perClick").innerText = gameData.perClick;
-      document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
-      document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
-      document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
-
-      const dcBtn = document.querySelector(".upgrade-btn:nth-child(1)");
-      const acBtn = document.querySelector(".upgrade-btn:nth-child(2)");
-      dcBtn.classList.toggle("glow", gameData.orders >= gameData.upgrades.doubleClick.cost);
-      acBtn.classList.toggle("glow", gameData.orders >= gameData.upgrades.autoClicker.cost && !gameData.upgrades.autoClicker.owned);
     }
 
     function saveGame() {
@@ -178,17 +132,29 @@
       updateUI();
     }
 
+    function updateUI() {
+      document.getElementById("orders").innerText = gameData.orders;
+      document.getElementById("perClick").innerText = gameData.perClick;
+      document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
+      document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
+      document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
+    }
+
+    function clickOrder() {
+      gameData.orders += gameData.perClick;
+      updateUI();
+      saveGame();
+    }
+
     function buyUpgrade(type) {
       const upgrade = gameData.upgrades[type];
       if (type === "doubleClick" && gameData.orders >= upgrade.cost) {
-        document.getElementById("upgradeSound").play();
         gameData.orders -= upgrade.cost;
         gameData.perClick *= 2;
         upgrade.level += 1;
         upgrade.cost += 30;
       }
       if (type === "autoClicker" && !upgrade.owned && gameData.orders >= upgrade.cost) {
-        document.getElementById("upgradeSound").play();
         gameData.orders -= upgrade.cost;
         upgrade.owned = true;
         setInterval(() => {
@@ -204,7 +170,16 @@
     function triggerDisintegrate() {
       document.body.innerHTML = `
         <style>
-          body { background: black; color: lime; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; animation: glitch 0.5s infinite; }
+          body {
+            background: black;
+            color: lime;
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            animation: glitch 0.5s infinite;
+          }
           @keyframes glitch {
             0% { transform: translate(0, 0); }
             20% { transform: translate(-2px, 2px); }
@@ -226,7 +201,16 @@
     function showBannedScreen() {
       document.body.innerHTML = `
         <style>
-          body { background: #111; color: red; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+          body {
+            background: #111;
+            color: red;
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+          }
         </style>
         <h1>⛔ You have been disintegrated.<br>Please return in 3 minutes.</h1>
       `;
@@ -236,9 +220,6 @@
       if (e.key === "Enter") {
         const input = this.value.trim().toLowerCase();
         const root = document.documentElement;
-        if (input.startsWith("theme ") || input === "disintegrate") {
-          document.getElementById("terminalSound").play();
-        }
         if (input.startsWith("theme ")) {
           const color = input.split(" ")[1];
           switch (color) {
@@ -258,6 +239,7 @@
       }
     });
 
+    // Leaderboard Logic
     firebase.auth().signInAnonymously().then(user => {
       currentUID = user.user.uid;
       const username = prompt("Enter a unique username:");
