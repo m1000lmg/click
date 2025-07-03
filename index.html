@@ -51,10 +51,28 @@
       padding: 6px;
       border-radius: 6px;
       width: 250px;
+      animation: fadeIn 0.5s ease;
+    }
+    .pop { animation: pop 0.2s ease; }
+    .glow {
+      box-shadow: 0 0 10px var(--main-color), 0 0 20px var(--main-color);
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
+  <audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6d27d6c70b.mp3" preload="auto"></audio>
+  <audio id="upgradeSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_cbe0a3b8ba.mp3" preload="auto"></audio>
+  <audio id="terminalSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_f8e0b7f3d4.mp3" preload="auto"></audio>
+
   <h1>CUSTOMS Clicker</h1>
   <button onclick="clickOrder()">Click Order</button>
   <div class="stats">
@@ -77,7 +95,7 @@
     <ol id="leaderboardList"></ol>
   </div>
   <div class="terminal">
-    <label>Terminal (e.g. <code>theme red</code>):</label>
+    <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
     <input type="text" id="terminalInput" placeholder="Enter command...">
   </div>
   <footer>Made for CUSTOMS 🚀</footer>
@@ -93,8 +111,10 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    let currentUID = null, playerName = null;
+    let currentUID = null;
+    let playerName = null;
 
+    const secret = "CUSTOMS_SECRET";
     let gameData = {
       orders: 0,
       perClick: 1,
@@ -103,22 +123,27 @@
         autoClicker: { cost: 50, owned: false }
       }
     };
-    const secret = "CUSTOMS_SECRET";
 
     function encryptData(data) {
       return CryptoJS.AES.encrypt(JSON.stringify(data), secret).toString();
     }
-    function decryptData(data) {
+    function decryptData(ciphertext) {
       try {
-        const bytes = CryptoJS.AES.decrypt(data, secret);
+        const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
         return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     }
 
     function clickOrder() {
+      document.getElementById("clickSound").play();
       gameData.orders += gameData.perClick;
       updateUI();
       saveGame();
+      const ordersEl = document.getElementById("orders");
+      ordersEl.classList.add("pop");
+      setTimeout(() => ordersEl.classList.remove("pop"), 200);
     }
 
     function updateUI() {
@@ -127,6 +152,11 @@
       document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
       document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
       document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
+
+      const dcBtn = document.querySelector(".upgrade-btn:nth-child(1)");
+      const acBtn = document.querySelector(".upgrade-btn:nth-child(2)");
+      dcBtn.classList.toggle("glow", gameData.orders >= gameData.upgrades.doubleClick.cost);
+      acBtn.classList.toggle("glow", gameData.orders >= gameData.upgrades.autoClicker.cost && !gameData.upgrades.autoClicker.owned);
     }
 
     function saveGame() {
@@ -135,24 +165,32 @@
     }
 
     function loadGame() {
-      const saved = localStorage.getItem("customsSave");
-      if (saved) {
-        const data = decryptData(saved);
-        if (data) gameData = data;
+      const banUntil = localStorage.getItem("bannedUntil");
+      if (banUntil && Date.now() < parseInt(banUntil)) {
+        showBannedScreen();
+        return;
+      }
+      const data = localStorage.getItem("customsSave");
+      if (data) {
+        const decrypted = decryptData(data);
+        if (decrypted) gameData = decrypted;
       }
       updateUI();
     }
 
     function buyUpgrade(type) {
-      const up = gameData.upgrades[type];
-      if (type === "doubleClick" && gameData.orders >= up.cost) {
-        gameData.orders -= up.cost;
+      const upgrade = gameData.upgrades[type];
+      if (type === "doubleClick" && gameData.orders >= upgrade.cost) {
+        document.getElementById("upgradeSound").play();
+        gameData.orders -= upgrade.cost;
         gameData.perClick *= 2;
-        up.level += 1;
-        up.cost += 30;
-      } else if (type === "autoClicker" && !up.owned && gameData.orders >= up.cost) {
-        gameData.orders -= up.cost;
-        up.owned = true;
+        upgrade.level += 1;
+        upgrade.cost += 30;
+      }
+      if (type === "autoClicker" && !upgrade.owned && gameData.orders >= upgrade.cost) {
+        document.getElementById("upgradeSound").play();
+        gameData.orders -= upgrade.cost;
+        upgrade.owned = true;
         setInterval(() => {
           gameData.orders += gameData.perClick;
           updateUI();
@@ -163,16 +201,72 @@
       saveGame();
     }
 
-    // FIREBASE AUTH + NAME
+    function triggerDisintegrate() {
+      document.body.innerHTML = `
+        <style>
+          body { background: black; color: lime; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; animation: glitch 0.5s infinite; }
+          @keyframes glitch {
+            0% { transform: translate(0, 0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-1px, 1px); }
+            80% { transform: translate(1px, -1px); }
+            100% { transform: translate(0, 0); }
+          }
+        </style>
+        <h1>💥 SYSTEM DISINTEGRATION INITIATED 💥<br>Resetting...</h1>
+      `;
+      setTimeout(() => {
+        localStorage.removeItem("customsSave");
+        localStorage.setItem("bannedUntil", (Date.now() + 3 * 60 * 1000).toString());
+        location.reload();
+      }, 3000);
+    }
+
+    function showBannedScreen() {
+      document.body.innerHTML = `
+        <style>
+          body { background: #111; color: red; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        </style>
+        <h1>⛔ You have been disintegrated.<br>Please return in 3 minutes.</h1>
+      `;
+    }
+
+    document.getElementById("terminalInput").addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        const input = this.value.trim().toLowerCase();
+        const root = document.documentElement;
+        if (input.startsWith("theme ") || input === "disintegrate") {
+          document.getElementById("terminalSound").play();
+        }
+        if (input.startsWith("theme ")) {
+          const color = input.split(" ")[1];
+          switch (color) {
+            case "red": root.style.setProperty('--main-color', '#ff4444'); break;
+            case "green": root.style.setProperty('--main-color', '#44ff44'); break;
+            case "blue": root.style.setProperty('--main-color', '#44bbff'); break;
+            case "neon": root.style.setProperty('--main-color', '#39ff14'); break;
+            case "default": root.style.setProperty('--main-color', '#00ff88'); break;
+            default: alert("Unknown theme. Try: red, green, blue, neon, default");
+          }
+          updateUI();
+        }
+        if (input === "disintegrate") {
+          triggerDisintegrate();
+        }
+        this.value = "";
+      }
+    });
+
     firebase.auth().signInAnonymously().then(user => {
       currentUID = user.user.uid;
-      const input = prompt("Enter a unique username:");
-      if (!input) return alert("Name is required.");
-      db.collection("leaderboard").where("name", "==", input).get().then(snapshot => {
+      const username = prompt("Enter a unique username:");
+      if (!username) return alert("Username required.");
+      db.collection("leaderboard").where("name", "==", username).get().then(snapshot => {
         if (!snapshot.empty) {
-          alert("Name already taken. Refresh and try another.");
+          alert("Name taken. Refresh and try again.");
         } else {
-          playerName = input;
+          playerName = username;
           loadGame();
           showLeaderboard();
         }
@@ -180,7 +274,7 @@
     });
 
     function saveToLeaderboard(score) {
-      if (!playerName || !currentUID) return;
+      if (!currentUID || !playerName) return;
       const ref = db.collection("leaderboard").doc(currentUID);
       ref.get().then(doc => {
         const old = doc.exists ? doc.data().score : 0;
@@ -205,26 +299,6 @@
           });
         });
     }
-
-    document.getElementById("terminalInput").addEventListener("keypress", function(e) {
-      if (e.key === "Enter") {
-        const val = this.value.trim().toLowerCase();
-        const root = document.documentElement;
-        if (val.startsWith("theme ")) {
-          const c = val.split(" ")[1];
-          const map = {
-            red: "#ff4444",
-            green: "#44ff44",
-            blue: "#44bbff",
-            neon: "#39ff14",
-            default: "#00ff88"
-          };
-          root.style.setProperty('--main-color', map[c] || "#00ff88");
-          updateUI();
-        }
-        this.value = "";
-      }
-    });
 
     setInterval(saveGame, 10000);
   </script>
