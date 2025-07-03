@@ -1,81 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CUSTOMS Clicker Game</title>
-  <!-- Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clicker Game</title>
   <style>
-    :root {
-      --main-color: #00ff88;
-    }
     body {
-      background: #0d0d0d;
-      color: var(--main-color);
-      font-family: 'Segoe UI', sans-serif;
+      font-family: Arial, sans-serif;
+      background-color: #1e1e2f;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .game-container {
+      background: #2d2d44;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
       text-align: center;
-      padding: 2rem;
     }
-    .stats, .upgrades, .terminal { margin: 2rem 0; }
-    .upgrade-btn {
-      background: #111;
-      border: 2px solid var(--main-color);
-      border-radius: 10px;
-      padding: 1rem;
-      margin: 1rem auto;
-      width: 200px;
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
       cursor: pointer;
-      transition: 0.3s;
     }
-    .upgrade-btn:hover { background: var(--main-color); color: black; }
-    #leaderboard ol {
-      list-style: none;
-      padding: 0;
+    .click-btn {
+      background: #4caf50;
+      color: white;
     }
-    #leaderboard li {
-      background: #111;
-      margin: 5px auto;
-      padding: 6px;
+    .auto-btn {
+      background: #2196f3;
+      color: white;
+    }
+    .multi-btn {
+      background: #ff9800;
+      color: white;
+    }
+    .leaderboard {
+      margin-top: 20px;
+      background: #1a1a2e;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    .leaderboard h3 {
+      margin-top: 0;
+    }
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-content {
+      background: #333;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .modal input {
+      padding: 10px;
+      font-size: 16px;
+      width: 80%;
       border-radius: 6px;
-      width: 250px;
+      border: none;
     }
   </style>
 </head>
 <body>
-  <h1>CUSTOMS Clicker</h1>
-  <div class="stats">
-    Orders: <span id="orders">0</span><br/>
-    Per Click: <span id="perClick">1</span>
-  </div>
-  <div class="upgrades">
-    <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
-      Double Click<br/>
-      Level: <span id="doubleClickLevel">0</span><br/>
-      Cost: <span id="doubleClickCost">20</span>
+  <div class="game-container">
+    <h1>Clicker Game</h1>
+    <h2>Clicks: <span id="clicks">0</span></h2>
+    <button class="click-btn" onclick="handleClick()">Click Me!</button>
+    <div>
+      <button class="auto-btn" onclick="buyAutoClicker()">Buy Auto Clicker (200 clicks)</button>
+      <button class="multi-btn" onclick="buyMultiplier()">Buy Multiplier (<span id="multiCost">30</span> clicks)</button>
     </div>
-    <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
-      Auto Clicker<br/>
-      Cost: <span id="autoClickerCost">50</span>
+    <div class="leaderboard">
+      <h3>Top 5 Leaderboard</h3>
+      <ol id="leaderboard"></ol>
+    </div>
+    <button onclick="openUsernameModal()">Submit Score</button>
+  </div>
+
+  <div id="usernameModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <p>Enter your name to submit:</p>
+      <input id="usernameInput" type="text" placeholder="Your name" />
+      <br><br>
+      <button onclick="submitScoreFromModal()">Submit</button>
+      <button onclick="closeUsernameModal()">Cancel</button>
     </div>
   </div>
 
-  <div id="leaderboard">
-    <h2>🏆 Leaderboard</h2>
-    <ol id="leaderboardList"></ol>
-  </div>
-
-  <div class="terminal">
-    <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
-    <input type="text" id="terminalInput" placeholder="Enter command...">
-  </div>
-  <footer>Made for CUSTOMS 🚀</footer>
-
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <script>
-    // Firebase Setup
     const firebaseConfig = {
       apiKey: "AIzaSyA7IGIzhaH7F2-P-gZ3A7ARUfMFE7s4iBM",
       authDomain: "customs-market.firebaseapp.com",
@@ -84,205 +115,106 @@
       messagingSenderId: "242049210602",
       appId: "1:242049210602:web:9e87db4ca3ecdb942ddf93"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    let currentUID = null;
-    let playerName = null;
 
-    // Game Data
-    const secret = "CUSTOMS_SECRET";
-    let gameData = {
-      orders: 0,
-      perClick: 1,
-      upgrades: {
-        doubleClick: { cost: 20, level: 0 },
-        autoClicker: { cost: 50, owned: false }
+    let clicks = parseInt(localStorage.getItem("clicks")) || 0;
+    let multiplier = parseInt(localStorage.getItem("multiplier")) || 1;
+    let multiCost = parseInt(localStorage.getItem("multiCost")) || 30;
+    let autoClickerInterval = null;
+
+    const clickDisplay = document.getElementById("clicks");
+    const multiCostDisplay = document.getElementById("multiCost");
+    const leaderboardDisplay = document.getElementById("leaderboard");
+
+    const clickSound = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_f1c3cf19a7.mp3");
+
+    function updateDisplay() {
+      clickDisplay.textContent = clicks;
+      multiCostDisplay.textContent = multiCost;
+      localStorage.setItem("clicks", clicks);
+      localStorage.setItem("multiplier", multiplier);
+      localStorage.setItem("multiCost", multiCost);
+    }
+
+    function handleClick() {
+      clicks += 1 * multiplier;
+      clickSound.play();
+      updateDisplay();
+    }
+
+    function buyAutoClicker() {
+      if (clicks >= 200 && autoClickerInterval === null) {
+        clicks -= 200;
+        autoClickerInterval = setInterval(() => {
+          clicks += 1 * multiplier;
+          updateDisplay();
+        }, 1000);
+        updateDisplay();
       }
-    };
-
-    function encryptData(data) {
-      return CryptoJS.AES.encrypt(JSON.stringify(data), secret).toString();
     }
 
-    function decryptData(ciphertext) {
-      try {
-        const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
-        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      } catch {
-        return null;
+    function buyMultiplier() {
+      if (clicks >= multiCost) {
+        clicks -= multiCost;
+        multiplier++;
+        multiCost += 60;
+        updateDisplay();
       }
     }
 
-    function saveGame() {
-      localStorage.setItem("customsSave", encryptData(gameData));
-      saveToLeaderboard(gameData.orders);
+    function openUsernameModal() {
+      if (clicks < 10) {
+        return alert("You need at least 10 clicks before submitting your score.");
+      }
+      document.getElementById("usernameModal").style.display = "flex";
     }
 
-    function loadGame() {
-      const banUntil = localStorage.getItem("bannedUntil");
-      if (banUntil && Date.now() < parseInt(banUntil)) {
-        showBannedScreen();
+    function closeUsernameModal() {
+      document.getElementById("usernameModal").style.display = "none";
+    }
+
+    function submitScoreFromModal() {
+      const username = document.getElementById("usernameInput").value.trim();
+      if (!username || username.length < 2) {
+        alert("Please enter a valid name (2+ characters).");
         return;
       }
-      const data = localStorage.getItem("customsSave");
-      if (data) {
-        const decrypted = decryptData(data);
-        if (decrypted) gameData = decrypted;
-      }
-      updateUI();
-    }
-
-    function updateUI() {
-      document.getElementById("orders").innerText = gameData.orders;
-      document.getElementById("perClick").innerText = gameData.perClick;
-      document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
-      document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
-      document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
-    }
-
-    function clickOrder() {
-      gameData.orders += gameData.perClick;
-      updateUI();
-      saveGame();
-    }
-
-    function buyUpgrade(type) {
-      const upgrade = gameData.upgrades[type];
-      if (type === "doubleClick" && gameData.orders >= upgrade.cost) {
-        gameData.orders -= upgrade.cost;
-        gameData.perClick *= 2;
-        upgrade.level += 1;
-        upgrade.cost += 30;
-      }
-      if (type === "autoClicker" && !upgrade.owned && gameData.orders >= upgrade.cost) {
-        gameData.orders -= upgrade.cost;
-        upgrade.owned = true;
-        setInterval(() => {
-          gameData.orders += gameData.perClick;
-          updateUI();
-          saveGame();
-        }, 1000);
-      }
-      updateUI();
-      saveGame();
-    }
-
-    function triggerDisintegrate() {
-      document.body.innerHTML = `
-        <style>
-          body {
-            background: black;
-            color: lime;
-            font-family: monospace;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            animation: glitch 0.5s infinite;
-          }
-          @keyframes glitch {
-            0% { transform: translate(0, 0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(2px, -2px); }
-            60% { transform: translate(-1px, 1px); }
-            80% { transform: translate(1px, -1px); }
-            100% { transform: translate(0, 0); }
-          }
-        </style>
-        <h1>💥 SYSTEM DISINTEGRATION INITIATED 💥<br>Resetting...</h1>
-      `;
-      setTimeout(() => {
-        localStorage.removeItem("customsSave");
-        localStorage.setItem("bannedUntil", (Date.now() + 3 * 60 * 1000).toString());
-        location.reload();
-      }, 3000);
-    }
-
-    function showBannedScreen() {
-      document.body.innerHTML = `
-        <style>
-          body {
-            background: #111;
-            color: red;
-            font-family: monospace;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            text-align: center;
-          }
-        </style>
-        <h1>⛔ You have been disintegrated.<br>Please return in 3 minutes.</h1>
-      `;
-    }
-
-    document.getElementById("terminalInput").addEventListener("keypress", function (e) {
-      if (e.key === "Enter") {
-        const input = this.value.trim().toLowerCase();
-        const root = document.documentElement;
-        if (input.startsWith("theme ")) {
-          const color = input.split(" ")[1];
-          switch (color) {
-            case "red": root.style.setProperty('--main-color', '#ff4444'); break;
-            case "green": root.style.setProperty('--main-color', '#44ff44'); break;
-            case "blue": root.style.setProperty('--main-color', '#44bbff'); break;
-            case "neon": root.style.setProperty('--main-color', '#39ff14'); break;
-            case "default": root.style.setProperty('--main-color', '#00ff88'); break;
-            default: alert("Unknown theme. Try: red, green, blue, neon, default");
-          }
-          updateUI();
-        }
-        if (input === "disintegrate") {
-          triggerDisintegrate();
-        }
-        this.value = "";
-      }
-    });
-
-    // Leaderboard Logic
-    firebase.auth().signInAnonymously().then(user => {
-      currentUID = user.user.uid;
-      const username = prompt("Enter a unique username:");
-      if (!username) return alert("Username required.");
-      db.collection("leaderboard").where("name", "==", username).get().then(snapshot => {
-        if (!snapshot.empty) {
-          alert("Name taken. Refresh and try again.");
-        } else {
-          playerName = username;
-          loadGame();
-          showLeaderboard();
-        }
-      });
-    });
-
-    function saveToLeaderboard(score) {
-      if (!currentUID || !playerName) return;
-      const ref = db.collection("leaderboard").doc(currentUID);
-      ref.get().then(doc => {
-        const old = doc.exists ? doc.data().score : 0;
-        if (score > old) {
-          ref.set({ name: playerName, score });
-        }
+      db.collection("leaderboard").add({
+        name: username.substring(0, 20),
+        score: clicks,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        alert("Score submitted!");
+        closeUsernameModal();
+        loadLeaderboard();
+      }).catch((error) => {
+        console.error("Error submitting score:", error);
+        alert("Error submitting score. Check console.");
       });
     }
 
-    function showLeaderboard() {
+    function loadLeaderboard() {
+      leaderboardDisplay.innerHTML = "";
       db.collection("leaderboard")
         .orderBy("score", "desc")
         .limit(5)
-        .onSnapshot(snapshot => {
-          const list = document.getElementById("leaderboardList");
-          list.innerHTML = "";
+        .get()
+        .then(snapshot => {
           snapshot.forEach(doc => {
-            const d = doc.data();
+            const data = doc.data();
             const li = document.createElement("li");
-            li.textContent = `${d.name} — ${d.score}`;
-            list.appendChild(li);
+            li.textContent = `${data.name}: ${data.score}`;
+            leaderboardDisplay.appendChild(li);
           });
+        }).catch(error => {
+          console.error("Error loading leaderboard:", error);
         });
     }
 
-    setInterval(saveGame, 10000);
+    updateDisplay();
+    loadLeaderboard();
   </script>
 </body>
 </html>
