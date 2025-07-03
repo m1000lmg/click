@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CUSTOMS Clicker Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --main-color: #00ff88;
+    }
+    body {
+      background: #0d0d0d;
+      color: var(--main-color);
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    h1, h2 {
+      margin-bottom: 1rem;
+    }
+    button {
+      font-size: 1.5rem;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 15px;
+      background: var(--main-color);
+      color: #000;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    button:active {
+      transform: scale(0.95);
+    }
+    .stats {
+      font-size: 1.2rem;
+      margin: 1rem 0;
+    }
+    .upgrades {
+      margin: 2rem 0;
+    }
+    .upgrade-btn {
+      background: #111;
+      border: 2px solid var(--main-color);
+      border-radius: 10px;
+      padding: 1rem;
+      margin: 1rem auto;
+      width: 200px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .upgrade-btn:hover {
+      background: var(--main-color);
+      color: black;
+    }
+    #leaderboard {
+      margin-top: 2rem;
+    }
+    #leaderboard ol {
+      list-style: none;
+      padding: 0;
+    }
+    #leaderboard li {
+      padding: 0.3rem;
+      background: #111;
+      margin: 0.3rem auto;
+      width: 250px;
+      border-radius: 8px;
+    }
+    .terminal {
+      margin-top: 2rem;
+    }
+    .terminal input {
+      width: 60%;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+    footer {
+      margin-top: 4rem;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>CUSTOMS Clicker</h1>
+  <button onclick="clickOrder()">Click Order</button>
+  <div class="stats">
+    Orders: <span id="orders">0</span><br/>
+    Per Click: <span id="perClick">1</span>
+  </div>
+  <div class="upgrades">
+    <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
+      Double Click<br/>
+      Level: <span id="doubleClickLevel">0</span><br/>
+      Cost: <span id="doubleClickCost">20</span>
+    </div>
+    <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
+      Auto Clicker<br/>
+      Cost: <span id="autoClickerCost">50</span>
+    </div>
+  </div>
+  <div id="leaderboard">
+    <h2>🏆 Top 5 Players</h2>
+    <ol id="leaderboardList"></ol>
+  </div>
+  <div class="terminal">
+    <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
+    <input type="text" id="terminalInput" placeholder="Enter command...">
+  </div>
+  <footer>Made for CUSTOMS 🚀</footer>
+  <audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6b0e22ec2c.mp3" preload="auto"></audio>
+  <audio id="upgradeSound" src="https://cdn.pixabay.com/audio/2021/08/09/audio_ad8db57d64.mp3" preload="auto"></audio>
+  <audio id="errorSound" src="https://cdn.pixabay.com/audio/2021/08/09/audio_2cf88ff3c0.mp3" preload="auto"></audio>
+  <!-- Game Script -->
+  <script>
+    function clickOrder() {
+      playSound("clickSound");
+      gameData.orders += gameData.perClick;
+      updateUI();
+      saveGame();
+    }
+  </script>
+  <!-- FULL GAME SCRIPT -->
+  <!-- Will be appended next -->
+</body>
+</html>
