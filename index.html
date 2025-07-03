@@ -2,302 +2,225 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CUSTOMS Clicker Game</title>
-
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
+  <title>Dot Dodge with Leaderboard</title>
   <style>
-    :root {
-      --main-color: #00ff88;
-      --bg-color: #0f0f0f;
-      --text-color: #ffffff;
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: sans-serif;
     }
 
-    * { box-sizing: border-box; }
+    canvas {
+      background: #222;
+      border: 2px solid #0f0;
+    }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, var(--bg-color), #1f1f1f);
-      color: var(--text-color);
-      text-align: center;
-      padding: 2rem;
+    #restartBtn {
+      margin-top: 10px;
+      padding: 0.5rem 1rem;
+      background: #0f0;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      display: none;
+    }
+
+    #leaderboard {
+      margin-top: 20px;
+      color: #0f0;
+      font-size: 1rem;
+    }
+
+    #leaderboard h3 {
+      margin-bottom: 0.5rem;
+    }
+
+    #leaderboard ul {
+      list-style: none;
+      padding: 0;
       margin: 0;
     }
 
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-      color: var(--main-color);
-    }
-
-    .stats {
-      margin: 1.5rem 0;
-      font-size: 1.5rem;
-    }
-
-    .click-btn {
-      background-color: var(--main-color);
-      color: #000;
-      border: none;
-      border-radius: 20px;
-      font-size: 2rem;
-      padding: 1rem 3rem;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .click-btn:active {
-      transform: scale(0.95);
-    }
-
-    .upgrades {
-      margin-top: 2rem;
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .upgrade-btn {
-      background: #222;
-      border: 2px solid var(--main-color);
-      border-radius: 15px;
-      padding: 1rem;
-      width: 200px;
-      cursor: pointer;
-      color: var(--main-color);
-      transition: 0.3s;
-    }
-
-    .upgrade-btn:hover {
-      background: var(--main-color);
-      color: #000;
-    }
-
-    footer {
-      margin-top: 3rem;
-      color: #777;
-    }
-
-    .terminal {
-      margin-top: 2rem;
-      background: #000;
-      color: #0f0;
-      padding: 1rem;
-      border-radius: 8px;
-      width: 100%;
-      max-width: 500px;
-      text-align: left;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .terminal label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-family: monospace;
-    }
-
-    .terminal input {
-      width: 100%;
-      padding: 0.5rem;
-      background: #111;
-      color: #0f0;
-      border: 1px solid #0f0;
-      font-family: monospace;
-      border-radius: 5px;
+    #leaderboard li {
+      margin: 2px 0;
     }
   </style>
 </head>
 <body>
-  <h1>CUSTOMS Clicker</h1>
-  <div class="stats">
-    Orders: <span id="orders">0</span><br/>
-    Per Click: <span id="perClick">1</span>
-  </div>
 
-  <button class="click-btn" onclick="handleClick()">📦 Click Me!</button>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<button id="restartBtn">Restart</button>
 
-  <div class="upgrades">
-    <div class="upgrade-btn" onclick="buyUpgrade('doubleClick')">
-      Double Click<br/>
-      Level: <span id="doubleClickLevel">0</span><br/>
-      Cost: <span id="doubleClickCost">20</span>
-    </div>
-    <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
-      Auto Clicker<br/>Cost: <span id="autoClickerCost">50</span>
-    </div>
-  </div>
+<div id="leaderboard">
+  <h3>🏆 Leaderboard (Top 5)</h3>
+  <ul id="scoresList">
+    <li>Loading...</li>
+  </ul>
+</div>
 
-  <div class="terminal">
-    <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
-    <input type="text" id="terminalInput" placeholder="Enter command...">
-  </div>
+<!-- Firebase -->
+<script type="module">
+  // Import Firebase
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  <footer>Made for CUSTOMS 🚀</footer>
+  // Your config
+  const firebaseConfig = {
+    apiKey: "AIzaSyA7IGIzhaH7F2-P-gZ3A7ARUfMFE7s4iBM",
+    authDomain: "customs-market.firebaseapp.com",
+    projectId: "customs-market",
+    storageBucket: "customs-market.appspot.com",
+    messagingSenderId: "242049210602",
+    appId: "1:242049210602:web:9e87db4ca3ecdb942ddf93"
+  };
 
-  <script>
-    const secret = "CUSTOMS_SECRET";
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    let gameData = {
-      orders: 0,
-      perClick: 1,
-      upgrades: {
-        doubleClick: { cost: 20, level: 0 },
-        autoClicker: { cost: 50, owned: false }
-      }
-    };
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const restartBtn = document.getElementById('restartBtn');
+  const scoresList = document.getElementById('scoresList');
 
-    function encryptData(data) {
-      return CryptoJS.AES.encrypt(JSON.stringify(data), secret).toString();
-    }
+  let player = { x: 180, y: 550, size: 20, speed: 5 };
+  let enemies = [];
+  let keys = {};
+  let gameOver = false;
+  let spawnTimer = 0;
+  let score = 0;
+  let survivalStartTime = null;
 
-    function decryptData(ciphertext) {
-      try {
-        const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
-        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      } catch {
-        return null;
-      }
-    }
+  document.addEventListener('keydown', e => keys[e.key] = true);
+  document.addEventListener('keyup', e => keys[e.key] = false);
+  restartBtn.addEventListener('click', restartGame);
 
-    function saveGame() {
-      localStorage.setItem("customsSave", encryptData(gameData));
-    }
+  async function updateLeaderboard() {
+    scoresList.innerHTML = '<li>Loading...</li>';
+    const scoresRef = collection(db, "leaderboard");
+    const topScores = await getDocs(query(scoresRef, orderBy("score", "desc"), limit(5)));
 
-    function loadGame() {
-      const banUntil = localStorage.getItem("bannedUntil");
-      if (banUntil && Date.now() < parseInt(banUntil)) {
-        showBannedScreen();
-        return;
-      }
+    scoresList.innerHTML = "";
+    topScores.forEach(doc => {
+      const data = doc.data();
+      scoresList.innerHTML += `<li>${data.name}: ${data.score}s</li>`;
+    });
+  }
 
-      const data = localStorage.getItem("customsSave");
-      if (data) {
-        const decrypted = decryptData(data);
-        if (decrypted) gameData = decrypted;
-      }
-      updateUI();
-    }
+  async function submitScore(score) {
+    const name = prompt("Enter your name for the leaderboard:", "Player" + Math.floor(Math.random() * 9999));
+    if (!name) return;
 
-    function updateUI() {
-      document.getElementById("orders").innerText = gameData.orders;
-      document.getElementById("perClick").innerText = gameData.perClick;
-      document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
-      document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
-      document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
-    }
-
-    function handleClick() {
-      gameData.orders += gameData.perClick;
-      updateUI();
-      saveGame();
-    }
-
-    function buyUpgrade(type) {
-      const upgrade = gameData.upgrades[type];
-
-      if (type === "doubleClick" && gameData.orders >= upgrade.cost) {
-        gameData.orders -= upgrade.cost;
-        gameData.perClick *= 2;
-        upgrade.level += 1;
-        upgrade.cost += 30;
-      }
-
-      if (type === "autoClicker" && !upgrade.owned && gameData.orders >= upgrade.cost) {
-        gameData.orders -= upgrade.cost;
-        upgrade.owned = true;
-        setInterval(() => {
-          gameData.orders += gameData.perClick;
-          updateUI();
-          saveGame();
-        }, 1000);
-      }
-
-      updateUI();
-      saveGame();
-    }
-
-    document.getElementById("terminalInput").addEventListener("keypress", function (e) {
-      if (e.key === "Enter") {
-        const input = this.value.trim().toLowerCase();
-        const root = document.documentElement;
-
-        if (input.startsWith("theme ")) {
-          const color = input.split(" ")[1];
-          switch (color) {
-            case "red": root.style.setProperty('--main-color', '#ff4444'); break;
-            case "green": root.style.setProperty('--main-color', '#44ff44'); break;
-            case "blue": root.style.setProperty('--main-color', '#44bbff'); break;
-            case "neon": root.style.setProperty('--main-color', '#39ff14'); break;
-            case "default": root.style.setProperty('--main-color', '#00ff88'); break;
-            default: alert("Unknown theme. Try: red, green, blue, neon, default");
-          }
-          updateUI();
-        }
-
-        if (input === "disintegrate") {
-          triggerDisintegrate();
-        }
-
-        this.value = "";
-      }
+    await addDoc(collection(db, "leaderboard"), {
+      name,
+      score,
+      timestamp: Date.now()
     });
 
-    function triggerDisintegrate() {
-      document.body.innerHTML = `
-        <style>
-          body {
-            background: black;
-            color: lime;
-            font-family: monospace;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            animation: glitch 0.5s infinite;
-          }
-          @keyframes glitch {
-            0% { transform: translate(0, 0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(2px, -2px); }
-            60% { transform: translate(-1px, 1px); }
-            80% { transform: translate(1px, -1px); }
-            100% { transform: translate(0, 0); }
-          }
-        </style>
-        <h1>💥 SYSTEM DISINTEGRATION INITIATED 💥<br>Resetting...</h1>
-      `;
+    updateLeaderboard();
+  }
 
-      setTimeout(() => {
-        localStorage.removeItem("customsSave");
-        localStorage.setItem("bannedUntil", (Date.now() + 3 * 60 * 1000).toString());
-        location.reload();
-      }, 3000);
+  function drawPlayer() {
+    ctx.fillStyle = '#00f';
+    ctx.fillRect(player.x, player.y, player.size, player.size);
+  }
+
+  function drawEnemies() {
+    ctx.fillStyle = '#f00';
+    enemies.forEach(enemy => {
+      ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+    });
+  }
+
+  function updateEnemies() {
+    for (let enemy of enemies) {
+      enemy.y += enemy.speed;
     }
 
-    function showBannedScreen() {
-      document.body.innerHTML = `
-        <style>
-          body {
-            background: #111;
-            color: red;
-            font-family: monospace;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            text-align: center;
-          }
-        </style>
-        <h1>⛔ You have been disintegrated.<br>Please return in 3 minutes.</h1>
-      `;
+    enemies = enemies.filter(e => e.y < canvas.height);
+  }
+
+  function spawnEnemy() {
+    const size = 20;
+    const x = Math.random() * (canvas.width - size);
+    enemies.push({ x, y: -size, size, speed: 3 + Math.random() * 2 });
+  }
+
+  function checkCollision(a, b) {
+    return (
+      a.x < b.x + b.size &&
+      a.x + a.size > b.x &&
+      a.y < b.y + b.size &&
+      a.y + a.size > b.y
+    );
+  }
+
+  function update() {
+    if (gameOver) return;
+
+    const now = Date.now();
+    score = Math.floor((now - survivalStartTime) / 1000);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Move player
+    if (keys['ArrowLeft']) player.x -= player.speed;
+    if (keys['ArrowRight']) player.x += player.speed;
+    player.x = Math.max(0, Math.min(player.x, canvas.width - player.size));
+
+    // Update game objects
+    drawPlayer();
+    drawEnemies();
+    updateEnemies();
+
+    // Spawn enemies
+    spawnTimer++;
+    if (spawnTimer > 30) {
+      spawnEnemy();
+      spawnTimer = 0;
     }
 
-    loadGame();
-    setInterval(saveGame, 10000);
-  </script>
+    // Collision check
+    for (let enemy of enemies) {
+      if (checkCollision(player, enemy)) {
+        endGame();
+        return;
+      }
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  function endGame() {
+    gameOver = true;
+    ctx.fillStyle = '#fff';
+    ctx.font = '30px sans-serif';
+    ctx.fillText(`GAME OVER`, 100, 300);
+    ctx.fillText(`Survived: ${score}s`, 100, 340);
+    restartBtn.style.display = 'block';
+    submitScore(score);
+  }
+
+  function restartGame() {
+    player.x = 180;
+    enemies = [];
+    gameOver = false;
+    restartBtn.style.display = 'none';
+    score = 0;
+    survivalStartTime = Date.now();
+    requestAnimationFrame(update);
+  }
+
+  // Start game
+  survivalStartTime = Date.now();
+  requestAnimationFrame(update);
+  updateLeaderboard();
+</script>
+
 </body>
 </html>
