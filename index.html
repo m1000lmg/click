@@ -5,19 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CUSTOMS Clicker Game</title>
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
   <style>
-    :root {
-      --main-color: #00ff88;
-    }
+    :root { --main-color: #00ff88; }
     body {
       background: #0d0d0d;
       color: var(--main-color);
       font-family: 'Segoe UI', sans-serif;
       text-align: center;
       padding: 2rem;
-    }
-    h1, h2 {
-      margin-bottom: 1rem;
     }
     button {
       font-size: 1.5rem;
@@ -29,16 +28,8 @@
       cursor: pointer;
       transition: transform 0.1s ease;
     }
-    button:active {
-      transform: scale(0.95);
-    }
-    .stats {
-      font-size: 1.2rem;
-      margin: 1rem 0;
-    }
-    .upgrades {
-      margin: 2rem 0;
-    }
+    button:active { transform: scale(0.95); }
+    .stats, .upgrades, .terminal { margin: 2rem 0; }
     .upgrade-btn {
       background: #111;
       border: 2px solid var(--main-color);
@@ -49,36 +40,17 @@
       cursor: pointer;
       transition: 0.3s;
     }
-    .upgrade-btn:hover {
-      background: var(--main-color);
-      color: black;
-    }
-    #leaderboard {
-      margin-top: 2rem;
-    }
+    .upgrade-btn:hover { background: var(--main-color); color: black; }
     #leaderboard ol {
       list-style: none;
       padding: 0;
     }
     #leaderboard li {
-      padding: 0.3rem;
       background: #111;
-      margin: 0.3rem auto;
+      margin: 5px auto;
+      padding: 6px;
+      border-radius: 6px;
       width: 250px;
-      border-radius: 8px;
-    }
-    .terminal {
-      margin-top: 2rem;
-    }
-    .terminal input {
-      width: 60%;
-      padding: 0.5rem;
-      font-size: 1rem;
-    }
-    footer {
-      margin-top: 4rem;
-      font-size: 0.9rem;
-      color: #aaa;
     }
   </style>
 </head>
@@ -101,27 +73,160 @@
     </div>
   </div>
   <div id="leaderboard">
-    <h2>🏆 Top 5 Players</h2>
+    <h2>🏆 Leaderboard</h2>
     <ol id="leaderboardList"></ol>
   </div>
   <div class="terminal">
-    <label>Terminal (e.g. <code>theme red</code> or <code>disintegrate</code>):</label>
+    <label>Terminal (e.g. <code>theme red</code>):</label>
     <input type="text" id="terminalInput" placeholder="Enter command...">
   </div>
   <footer>Made for CUSTOMS 🚀</footer>
-  <audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6b0e22ec2c.mp3" preload="auto"></audio>
-  <audio id="upgradeSound" src="https://cdn.pixabay.com/audio/2021/08/09/audio_ad8db57d64.mp3" preload="auto"></audio>
-  <audio id="errorSound" src="https://cdn.pixabay.com/audio/2021/08/09/audio_2cf88ff3c0.mp3" preload="auto"></audio>
-  <!-- Game Script -->
+
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA7IGIzhaH7F2-P-gZ3A7ARUfMFE7s4iBM",
+      authDomain: "customs-market.firebaseapp.com",
+      projectId: "customs-market",
+      storageBucket: "customs-market.appspot.com",
+      messagingSenderId: "242049210602",
+      appId: "1:242049210602:web:9e87db4ca3ecdb942ddf93"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    let currentUID = null, playerName = null;
+
+    let gameData = {
+      orders: 0,
+      perClick: 1,
+      upgrades: {
+        doubleClick: { cost: 20, level: 0 },
+        autoClicker: { cost: 50, owned: false }
+      }
+    };
+    const secret = "CUSTOMS_SECRET";
+
+    function encryptData(data) {
+      return CryptoJS.AES.encrypt(JSON.stringify(data), secret).toString();
+    }
+    function decryptData(data) {
+      try {
+        const bytes = CryptoJS.AES.decrypt(data, secret);
+        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+      } catch { return null; }
+    }
+
     function clickOrder() {
-      playSound("clickSound");
       gameData.orders += gameData.perClick;
       updateUI();
       saveGame();
     }
+
+    function updateUI() {
+      document.getElementById("orders").innerText = gameData.orders;
+      document.getElementById("perClick").innerText = gameData.perClick;
+      document.getElementById("doubleClickCost").innerText = gameData.upgrades.doubleClick.cost;
+      document.getElementById("doubleClickLevel").innerText = gameData.upgrades.doubleClick.level;
+      document.getElementById("autoClickerCost").innerText = gameData.upgrades.autoClicker.cost;
+    }
+
+    function saveGame() {
+      localStorage.setItem("customsSave", encryptData(gameData));
+      saveToLeaderboard(gameData.orders);
+    }
+
+    function loadGame() {
+      const saved = localStorage.getItem("customsSave");
+      if (saved) {
+        const data = decryptData(saved);
+        if (data) gameData = data;
+      }
+      updateUI();
+    }
+
+    function buyUpgrade(type) {
+      const up = gameData.upgrades[type];
+      if (type === "doubleClick" && gameData.orders >= up.cost) {
+        gameData.orders -= up.cost;
+        gameData.perClick *= 2;
+        up.level += 1;
+        up.cost += 30;
+      } else if (type === "autoClicker" && !up.owned && gameData.orders >= up.cost) {
+        gameData.orders -= up.cost;
+        up.owned = true;
+        setInterval(() => {
+          gameData.orders += gameData.perClick;
+          updateUI();
+          saveGame();
+        }, 1000);
+      }
+      updateUI();
+      saveGame();
+    }
+
+    // FIREBASE AUTH + NAME
+    firebase.auth().signInAnonymously().then(user => {
+      currentUID = user.user.uid;
+      const input = prompt("Enter a unique username:");
+      if (!input) return alert("Name is required.");
+      db.collection("leaderboard").where("name", "==", input).get().then(snapshot => {
+        if (!snapshot.empty) {
+          alert("Name already taken. Refresh and try another.");
+        } else {
+          playerName = input;
+          loadGame();
+          showLeaderboard();
+        }
+      });
+    });
+
+    function saveToLeaderboard(score) {
+      if (!playerName || !currentUID) return;
+      const ref = db.collection("leaderboard").doc(currentUID);
+      ref.get().then(doc => {
+        const old = doc.exists ? doc.data().score : 0;
+        if (score > old) {
+          ref.set({ name: playerName, score });
+        }
+      });
+    }
+
+    function showLeaderboard() {
+      db.collection("leaderboard")
+        .orderBy("score", "desc")
+        .limit(5)
+        .onSnapshot(snapshot => {
+          const list = document.getElementById("leaderboardList");
+          list.innerHTML = "";
+          snapshot.forEach(doc => {
+            const d = doc.data();
+            const li = document.createElement("li");
+            li.textContent = `${d.name} — ${d.score}`;
+            list.appendChild(li);
+          });
+        });
+    }
+
+    document.getElementById("terminalInput").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") {
+        const val = this.value.trim().toLowerCase();
+        const root = document.documentElement;
+        if (val.startsWith("theme ")) {
+          const c = val.split(" ")[1];
+          const map = {
+            red: "#ff4444",
+            green: "#44ff44",
+            blue: "#44bbff",
+            neon: "#39ff14",
+            default: "#00ff88"
+          };
+          root.style.setProperty('--main-color', map[c] || "#00ff88");
+          updateUI();
+        }
+        this.value = "";
+      }
+    });
+
+    setInterval(saveGame, 10000);
   </script>
-  <!-- FULL GAME SCRIPT -->
-  <!-- Will be appended next -->
 </body>
 </html>
